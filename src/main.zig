@@ -83,6 +83,15 @@ fn checkSidProtocol(ctx: *const DiagApi) bool {
 }
 
 fn checkMidi(ctx: *const DiagApi) bool {
+    const counter_only = ctx.audio.midiOpenSynth("MIDI");
+    ctx.sys.print("midi_open_synth MIDI (non-renderer): ");
+    ctx.sys.printI32(counter_only);
+    ctx.sys.write("\r\n");
+    if (counter_only >= 0) {
+        _ = ctx.audio.midiClose(@intCast(counter_only));
+        return false;
+    }
+
     const handle = ctx.audio.midiOpenSynth("OPL3");
     ctx.sys.print("midi_open_synth OPL3: ");
     ctx.sys.printI32(handle);
@@ -90,19 +99,35 @@ fn checkMidi(ctx: *const DiagApi) bool {
     if (handle < 0) return false;
 
     const id: u32 = @intCast(handle);
-    _ = ctx.audio.midiSend(id, 0, 0xC0, 0, 0);
+    const program = ctx.audio.midiSend(id, 0, 0xC0, 0, 0);
     const on = ctx.audio.midiSend(id, 0, 0x90, 60, 96);
-    ctx.sys.sleepTicks(12);
+    const rendered_on = renderMidi(ctx, id, 1024);
+    ctx.sys.sleepTicks(ctx.sys.ticksFromMilliseconds(22));
     const off = ctx.audio.midiSend(id, 0, 0x80, 60, 0);
+    const rendered_off = renderMidi(ctx, id, 1024);
     const close = ctx.audio.midiClose(id);
-    ctx.sys.print("midi note on/off/close: ");
+    ctx.sys.print("midi program/on/render/off/render/close: ");
+    ctx.sys.printI32(program);
+    ctx.sys.write(" / ");
     ctx.sys.printI32(on);
+    ctx.sys.write(" / ");
+    ctx.sys.printI32(rendered_on);
     ctx.sys.write(" / ");
     ctx.sys.printI32(off);
     ctx.sys.write(" / ");
+    ctx.sys.printI32(rendered_off);
+    ctx.sys.write(" / ");
     ctx.sys.printI32(close);
     ctx.sys.write("\r\n");
-    return on >= 0 and off >= 0 and close == 0;
+    return program >= 0 and on >= 0 and rendered_on >= 0 and off >= 0 and rendered_off >= 0 and close == 0;
+}
+
+fn renderMidi(ctx: *const DiagApi, handle: u32, frames: u16) i32 {
+    while (true) {
+        const result = ctx.audio.midiRender(handle, frames);
+        if (result != r4os.abi.service_api_result_busy) return result;
+        ctx.sys.sleepTicks(1);
+    }
 }
 
 fn dispatch(ctx: *const DiagApi, role: []const u8, opcode: u32, comptime T: type, op: *T) i32 {
@@ -150,7 +175,7 @@ fn stateName(state: u32) []const u8 {
 
 fn checkOpl3(ctx: *const DiagApi) bool {
     const reset = ctx.audio.opl3Reset();
-    const write = ctx.audio.opl3WriteRegister(0, 0x20, 0x01);
+    const write = ctx.audio.opl3WriteRegister(0, 0x20, 0x21);
     const render = ctx.audio.opl3RenderBlock();
     const stop = ctx.audio.opl3Stop();
     ctx.sys.print("opl3 reset/write/render/stop: ");
@@ -162,7 +187,7 @@ fn checkOpl3(ctx: *const DiagApi) bool {
     ctx.sys.write(" / ");
     ctx.sys.printI32(stop);
     ctx.sys.write("\r\n");
-    return reset >= 0 and write >= 0 and (render >= 0 or render == -2) and stop >= 0;
+    return reset >= 0 and write >= 0 and render >= 0 and stop >= 0;
 }
 
 fn checkSid(ctx: *const DiagApi) bool {
@@ -173,12 +198,34 @@ fn checkSid(ctx: *const DiagApi) bool {
     if (handle < 0) return false;
 
     const id: u32 = @intCast(handle);
-    const volume = ctx.audio.sidWriteRegister(id, 0x18, 0x0F);
+    const program = [_]u8{
+        0xA9, 0x0F, 0x8D, 0x18, 0xD4,
+        0xA9, 0x00, 0x8D, 0x00, 0xD4,
+        0xA9, 0x20, 0x8D, 0x01, 0xD4,
+        0xA9, 0xF0, 0x8D, 0x05, 0xD4,
+        0xA9, 0xF0, 0x8D, 0x06, 0xD4,
+        0xA9, 0x21, 0x8D, 0x04, 0xD4,
+        0x60, 0xEA, 0x60,
+    };
+    const loaded = ctx.audio.sidLoadData(id, 0x1000, program[0..]);
+    const initialized = ctx.audio.sidInit(id, 0x1000, 1);
+    var rendered: i32 = r4os.abi.service_api_result_busy;
+    while (rendered == r4os.abi.service_api_result_busy) {
+        rendered = ctx.audio.sidPlayFrame(id, 0x1020, 50);
+        if (rendered == r4os.abi.service_api_result_busy) ctx.sys.sleepTicks(1);
+    }
+    const stopped = ctx.audio.sidStop(id);
     const release = ctx.audio.sidRelease(id);
-    ctx.sys.print("sid volume/release: ");
-    ctx.sys.printI32(volume);
+    ctx.sys.print("sid load/init/render/stop/release: ");
+    ctx.sys.printI32(loaded);
+    ctx.sys.write(" / ");
+    ctx.sys.printI32(initialized);
+    ctx.sys.write(" / ");
+    ctx.sys.printI32(rendered);
+    ctx.sys.write(" / ");
+    ctx.sys.printI32(stopped);
     ctx.sys.write(" / ");
     ctx.sys.printI32(release);
     ctx.sys.write("\r\n");
-    return volume >= 0 and release == 0;
+    return loaded == program.len and initialized == 0 and rendered == 0 and stopped == 0 and release == 0;
 }

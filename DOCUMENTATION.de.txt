@@ -8,18 +8,27 @@ Projektstruktur seit 0.51.21:
 - `build.zig.zon` bindet `r4os_sdk` als Paket.
 - `module.R4MF` beschreibt Artefakt, Zielpfad, R4L-Imports und Contract.
 
-Build:
+Build unter Linux beziehungsweise Windows:
 
-    cd Code\System\Diagnostics\SynthDiag
-    ..\..\..\DevTools\Zig\zig.exe build
+    ./Build.sh
+    Build.bat
 
 Ergebnis:
 
-    Code\System\Diagnostics\SynthDiag\zig-out\SYNTHD.R4X
+    Artifacts/Modules/SYNTHD/SYNTHD.R4X
 
 Contract:
 - Build-Profil: `Zig/R4XStart`
-- R4XStart-Entry: `synthd_main`
+- fachlicher Einstieg: `r4_app_main`; das SDK exportiert `R4XStart`
 - App-Klasse: `console`
 - R4L-Imports: `R4SYS`, `R4AUDIO`, `R4DEV`
 - Zielpfad im Image: `C:\R4OS\SOFTWARE\TERMINAL\DIAG\SYNTHD.R4X`
+
+Die Diagnose prueft seit 0.69.28 zusaetzlich den produktiven Datenpfad:
+- `MIDI` wird als zaehlender Nicht-Renderer abgewiesen, `OPL3` dagegen exakt
+  ausgewaehlt.
+- Note-On/Off und OPL3-Renderbloecke muessen das aktive AudioBackend erreichen;
+  `Busy` wird als Backpressure behandelt, andere Fehler schlagen fehl.
+- Ein kleines 6510-Programm schreibt ueber `audio.sid` in SID-Register und
+  erzeugt anschliessend einen PCM-Block. Damit werden R4P, SID.R4D und der
+  AudioBackend-Pfad gemeinsam abgenommen.
