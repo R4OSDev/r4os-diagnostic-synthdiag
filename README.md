@@ -4,7 +4,7 @@
 
 ## Package
 
-- Version: `0.1.5`
+- Version: `0.1.6`
 - Image target: `/R4OS/SOFTWARE/TERMINAL/DIAG/SYNTHD.R4X`
 - Image scope: `test`
 - Canonical project manifest: `module.R4MF`
@@ -12,7 +12,8 @@
 The manifest is the single source of truth for the artifact, imports, image
 target, and package metadata.
 
-SID Stop retries Busy for at most three seconds with one-tick waits. The
+SID Stop, SID Release and MIDI Close retry Busy for at most three seconds
+with one-tick waits. The
 diagnostic prints and checks the actual final Stop and Release values. A
 private SID acknowledgement alone is not a hardware/DMA completion receipt.
 The separate first-call lazy-protocol role-check issue remains tracked by

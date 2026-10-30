@@ -5,6 +5,26 @@ const DiagApi = struct {
     audio: r4os.r4audio.Context,
     dev: r4os.r4dev.Context,
 
+    fn midiClose(self: *const DiagApi, id: u32) i32 {
+        const deadline = self.sys.ticks() +| self.sys.ticksFromMilliseconds(3000);
+        var result = self.audio.midiClose(id);
+        while (result == r4os.abi.service_api_result_busy and self.sys.ticks() < deadline) {
+            self.sys.sleepTicks(1);
+            result = self.audio.midiClose(id);
+        }
+        return result;
+    }
+
+    fn sidRelease(self: *const DiagApi, id: u32) i32 {
+        const deadline = self.sys.ticks() +| self.sys.ticksFromMilliseconds(3000);
+        var result = self.audio.sidRelease(id);
+        while (result == r4os.abi.service_api_result_busy and self.sys.ticks() < deadline) {
+            self.sys.sleepTicks(1);
+            result = self.audio.sidRelease(id);
+        }
+        return result;
+    }
+
     fn init(r4_app: *r4os.App) ?DiagApi {
         return .{
             .sys = r4_app.system(),
@@ -88,7 +108,7 @@ fn checkMidi(ctx: *const DiagApi) bool {
     ctx.sys.printI32(counter_only);
     ctx.sys.write("\r\n");
     if (counter_only >= 0) {
-        _ = ctx.audio.midiClose(@intCast(counter_only));
+        _ = ctx.midiClose(@intCast(counter_only));
         return false;
     }
 
@@ -105,7 +125,7 @@ fn checkMidi(ctx: *const DiagApi) bool {
     ctx.sys.sleepTicks(ctx.sys.ticksFromMilliseconds(22));
     const off = ctx.audio.midiSend(id, 0, 0x80, 60, 0);
     const rendered_off = renderMidi(ctx, id, 1024);
-    const close = ctx.audio.midiClose(id);
+    const close = ctx.midiClose(id);
     ctx.sys.print("midi program/on/render/off/render/close: ");
     ctx.sys.printI32(program);
     ctx.sys.write(" / ");
@@ -220,7 +240,7 @@ fn checkSid(ctx: *const DiagApi) bool {
         ctx.sys.sleepTicks(1);
         stopped = ctx.audio.sidStop(id);
     }
-    const release = ctx.audio.sidRelease(id);
+    const release = ctx.sidRelease(id);
     ctx.sys.print("sid load/init/render/stop/release: ");
     ctx.sys.printI32(loaded);
     ctx.sys.write(" / ");
