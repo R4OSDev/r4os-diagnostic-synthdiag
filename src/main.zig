@@ -214,7 +214,12 @@ fn checkSid(ctx: *const DiagApi) bool {
         rendered = ctx.audio.sidPlayFrame(id, 0x1020, 50);
         if (rendered == r4os.abi.service_api_result_busy) ctx.sys.sleepTicks(1);
     }
-    const stopped = ctx.audio.sidStop(id);
+    const deadline = ctx.sys.ticks() +| ctx.sys.ticksFromMilliseconds(3000);
+    var stopped = ctx.audio.sidStop(id);
+    while (stopped == r4os.abi.service_api_result_busy and ctx.sys.ticks() < deadline) {
+        ctx.sys.sleepTicks(1);
+        stopped = ctx.audio.sidStop(id);
+    }
     const release = ctx.audio.sidRelease(id);
     ctx.sys.print("sid load/init/render/stop/release: ");
     ctx.sys.printI32(loaded);
