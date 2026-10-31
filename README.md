@@ -4,7 +4,7 @@
 
 ## Package
 
-- Version: `0.1.6`
+- Version: `0.1.7`
 - Image target: `/R4OS/SOFTWARE/TERMINAL/DIAG/SYNTHD.R4X`
 - Image scope: `test`
 - Canonical project manifest: `module.R4MF`
@@ -13,11 +13,11 @@ The manifest is the single source of truth for the artifact, imports, image
 target, and package metadata.
 
 SID Stop, SID Release and MIDI Close retry Busy for at most three seconds
-with one-tick waits. The
-diagnostic prints and checks the actual final Stop and Release values. A
+with one-tick waits. The diagnostic prints and checks the actual final Stop and Release values. A
 private SID acknowledgement alone is not a hardware/DMA completion receipt.
-The separate first-call lazy-protocol role-check issue remains tracked by
-workspace roadmap0.88.85; warm activation and a fresh diagnosis are distinct.
+The real MIDI/OPL3/SID protocol selftests run before the strict active-role
+checks, so a valid lazy R4P is activated by the first diagnosis. Missing roles,
+failed activation, protocol errors and DSP failures still fail the diagnosis.
 
 ## Build
 
@@ -25,7 +25,7 @@ On Windows:
 
     Build.bat
 
-On Linux or macOS:
+On Linux:
 
     ./Build.sh
 

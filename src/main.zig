@@ -43,12 +43,14 @@ pub fn r4_app_main(r4_app: *r4os.App) i32 {
     ctx.sys.print(ctx.audio.sidModelName());
     ctx.sys.write("\r\n");
 
-    ok = checkRole(&ctx, "audio.midi") and ok;
-    ok = checkRole(&ctx, "audio.opl3") and ok;
-    ok = checkRole(&ctx, "audio.sid") and ok;
+    // Dispatch the real selftests before requiring active lazy R4P roles.
+    // A successful activation still has to pass the unchanged strict status.
     ok = checkMidiProtocol(&ctx) and ok;
     ok = checkOpl3Protocol(&ctx) and ok;
     ok = checkSidProtocol(&ctx) and ok;
+    ok = checkRole(&ctx, "audio.midi") and ok;
+    ok = checkRole(&ctx, "audio.opl3") and ok;
+    ok = checkRole(&ctx, "audio.sid") and ok;
     ok = checkMidi(&ctx) and ok;
     ok = checkOpl3(&ctx) and ok;
     ok = checkSid(&ctx) and ok;

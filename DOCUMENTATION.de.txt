@@ -6,7 +6,7 @@ SYNTHD.R4X ist die Synth-, SID-, MIDI- und OPL3-Diagnose.
 Projektstruktur seit 0.51.21:
 - `build.zig` baut die Diagnose als eigenes SDK-Projekt.
 - `build.zig.zon` bindet `r4os_sdk` als Paket.
-- `module.R4MF` beschreibt Artefakt, Zielpfad, R4L-Imports und Contract.
+- `module.R4MF` beschreibt Artefakt, Zielpfad, Plattform-Imports und Contract.
 
 Build unter Linux beziehungsweise Windows:
 
@@ -15,13 +15,13 @@ Build unter Linux beziehungsweise Windows:
 
 Ergebnis:
 
-    Artifacts/Modules/SYNTHD/SYNTHD.R4X
+    Artifacts/Modules/SynthDiag/SYNTHD.R4X
 
 Contract:
 - Build-Profil: `Zig/R4XStart`
 - fachlicher Einstieg: `r4_app_main`; das SDK exportiert `R4XStart`
 - App-Klasse: `console`
-- R4L-Imports: `R4SYS`, `R4AUDIO`, `R4DEV`
+- Eingebaute Plattform-Imports: `R4SYS`, `R4AUDIO`, `R4DEV`
 - Zielpfad im Image: `C:\R4OS\SOFTWARE\TERMINAL\DIAG\SYNTHD.R4X`
 
 Die Diagnose prueft seit 0.69.28 zusaetzlich den produktiven Datenpfad:
@@ -32,3 +32,7 @@ Die Diagnose prueft seit 0.69.28 zusaetzlich den produktiven Datenpfad:
 - Ein kleines 6510-Programm schreibt ueber `audio.sid` in SID-Register und
   erzeugt anschliessend einen PCM-Block. Damit werden R4P, SID.R4D und der
   AudioBackend-Pfad gemeinsam abgenommen.
+
+0.88.85: Die echten Protokoll-Selbsttests aktivieren Lazy-R4Ps vor der
+strengen Active-/R4P-Statuspruefung. Fehlende Rollen, Init-/Dispatch- und
+DSPfehler bleiben Fehler; kein pauschales Akzeptieren von Loaded.
