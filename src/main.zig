@@ -2,13 +2,15 @@ const r4os = @import("r4os");
 
 const DiagApi = struct {
     sys: r4os.r4sys.Context,
-    audio: r4os.r4audio.Context,
+    audio: r4os.app_audio.AdvancedAudio,
+    app: *r4os.App2,
     dev: r4os.r4dev.Context,
 
     fn midiClose(self: *const DiagApi, id: u32) i32 {
-        const deadline = self.sys.ticks() +| self.sys.ticksFromMilliseconds(3000);
+        var budget = self.newBudget() catch |err| return r4os.rpc_budget.code(err);
         var result = self.audio.midiClose(id);
-        while (result == r4os.abi.service_api_result_busy and self.sys.ticks() < deadline) {
+        while (result == r4os.abi.service_api_result_busy ) {
+            _ = budget.remainingTicks() catch |err| return r4os.rpc_budget.code(err);
             self.sys.sleepTicks(1);
             result = self.audio.midiClose(id);
         }
@@ -16,25 +18,32 @@ const DiagApi = struct {
     }
 
     fn sidRelease(self: *const DiagApi, id: u32) i32 {
-        const deadline = self.sys.ticks() +| self.sys.ticksFromMilliseconds(3000);
+        var budget = self.newBudget() catch |err| return r4os.rpc_budget.code(err);
         var result = self.audio.sidRelease(id);
-        while (result == r4os.abi.service_api_result_busy and self.sys.ticks() < deadline) {
+        while (result == r4os.abi.service_api_result_busy ) {
+            _ = budget.remainingTicks() catch |err| return r4os.rpc_budget.code(err);
             self.sys.sleepTicks(1);
             result = self.audio.sidRelease(id);
         }
         return result;
     }
 
-    fn init(r4_app: *r4os.App) ?DiagApi {
+    fn newBudget(self: *const DiagApi) r4os.rpc_budget.Error!r4os.rpc_budget.Budget {
+        const clock = self.app.clock() catch return error.ClockUnavailable;
+        return r4os.rpc_budget.Budget.fromTicks(clock.read, @max(self.sys.ticksFromMilliseconds(3000), 1));
+    }
+
+    fn init(r4_app: *r4os.App2) ?DiagApi {
         return .{
             .sys = r4_app.system(),
-            .audio = r4_app.audioLowLevel() orelse return null,
+            .audio = (r4_app.audio() orelse return null).advanced(),
+            .app = r4_app,
             .dev = r4_app.devicesLowLevel() orelse return null,
         };
     }
 };
 
-pub fn r4_app_main(r4_app: *r4os.App) i32 {
+pub fn r4_app_main(r4_app: *r4os.App2) i32 {
     var ctx = DiagApi.init(r4_app) orelse return r4os.abi.err_no_group;
     var ok = true;
 
@@ -145,7 +154,9 @@ fn checkMidi(ctx: *const DiagApi) bool {
 }
 
 fn renderMidi(ctx: *const DiagApi, handle: u32, frames: u16) i32 {
+    var budget = ctx.newBudget() catch |err| return r4os.rpc_budget.code(err);
     while (true) {
+        _ = budget.remainingTicks() catch |err| return r4os.rpc_budget.code(err);
         const result = ctx.audio.midiRender(handle, frames);
         if (result != r4os.abi.service_api_result_busy) return result;
         ctx.sys.sleepTicks(1);
@@ -232,13 +243,16 @@ fn checkSid(ctx: *const DiagApi) bool {
     const loaded = ctx.audio.sidLoadData(id, 0x1000, program[0..]);
     const initialized = ctx.audio.sidInit(id, 0x1000, 1);
     var rendered: i32 = r4os.abi.service_api_result_busy;
+    var render_budget = ctx.newBudget() catch return false;
     while (rendered == r4os.abi.service_api_result_busy) {
+        _ = render_budget.remainingTicks() catch break;
         rendered = ctx.audio.sidPlayFrame(id, 0x1020, 50);
         if (rendered == r4os.abi.service_api_result_busy) ctx.sys.sleepTicks(1);
     }
-    const deadline = ctx.sys.ticks() +| ctx.sys.ticksFromMilliseconds(3000);
+    var stop_budget = ctx.newBudget() catch return false;
     var stopped = ctx.audio.sidStop(id);
-    while (stopped == r4os.abi.service_api_result_busy and ctx.sys.ticks() < deadline) {
+    while (stopped == r4os.abi.service_api_result_busy) {
+        _ = stop_budget.remainingTicks() catch break;
         ctx.sys.sleepTicks(1);
         stopped = ctx.audio.sidStop(id);
     }

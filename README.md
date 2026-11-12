@@ -4,7 +4,7 @@
 
 ## Package
 
-- Version: `0.1.7`
+- Version: `0.1.9`
 - Image target: `/R4OS/SOFTWARE/TERMINAL/DIAG/SYNTHD.R4X`
 - Image scope: `test`
 - Canonical project manifest: `module.R4MF`
@@ -45,3 +45,10 @@ Detailed German technical notes from the migration are preserved in
 Original R4OS material is licensed under Apache License 2.0. See `LICENSE`
 and `NOTICE`. Any repository-specific external material is documented in
 `THIRD_PARTY_NOTICES.md`.
+
+API migration 0.90.82
+--------------------
+The normal App2/Query2 consumer uses AdvancedAudio on the actual generation2 provider. Common monotonic budgets bound MIDI render/close and SID render/stop/release, including the formerly unbounded BUSY loops. A timeout is a failed diagnostic and never a successful release. All three real R4P selftests, strict active role/source checks, counter-only MIDI rejection and the original OPL3/SID render data remain. The full-only normal MIDI/OPL3/SID drivers must be enabled for the renderer tests; installed R4P roles alone are insufficient.
+
+Local source, artifact and runtime evidence: Research/API-ABI/Migration/0.90.82/
+in the coordinating workspace. Physical hardware and Windows are separate qualifications.
